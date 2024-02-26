@@ -109,7 +109,7 @@ parser.add_argument('-c','--compress',help='compress multiple run in single run 
 parser.add_argument('-t','--target',help='target folder where the compressed run are stored', action='store', type=str,default="NID_target")
 parser.add_argument('-s','--source',help='source folder where the bare run are stored', action='store', type=str,default="NID_source")
 parser.add_argument('-env','--environment',help='append new branch to compress run with run variables', action='store', type=int,default=None)
-parser.add_argument('-log','--logbook',help='Logbook to read', action='store', type=str,default='MANGO_LNGS_Logbook.xlsx')
+parser.add_argument('-log','--logbook',help='Logbook to read', action='store', type=str,default='MANGO_LNGS_Logbook_temp.xlsx')
 parser.add_argument('-v','--verbose',help='write something to print more info', action='store', type=int,default=None)
 args = parser.parse_args()
 
@@ -166,6 +166,7 @@ if args.compress is not None:
 
 if args.environment is not None:
     # Iterate over DataFrame rows
+    print("Appending enviromental variables")
     for index, row in tqdm(new_df_reset.iterrows()):
         # Construct ROOT file name based on StartRun and StopRun
         root_file_name = f"reco_run{row['StartRun']}-{row['StopRun']}_3D.root"
