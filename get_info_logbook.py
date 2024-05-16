@@ -104,7 +104,7 @@ def add_branch(root_file_path, value,branch_name, tree_name="Events"):
     tree.Write("", ROOT.TObject.kOverwrite)  # Overwrite the existing tree
     root_file.Close()
 
-parser = argparse.ArgumentParser(description='Analyze waveform from a certain Run', epilog='Version: 1.0')
+parser = argparse.ArgumentParser(description='Hadd and in case add env variables to MANGO run from runlog', epilog='Version: 1.0')
 parser.add_argument('-c','--compress',help='compress multiple run in single run file', action='store', type=int,default=None)
 parser.add_argument('-t','--target',help='target folder where the compressed run are stored', action='store', type=str,default="NID_target")
 parser.add_argument('-s','--source',help='source folder where the bare run are stored', action='store', type=str,default="NID_source")
@@ -117,7 +117,7 @@ df = pd.read_excel(args.logbook)
 #print(df)
 
 #Select NIF data
-str_condition='NID'
+str_condition='ED'
 NID_condition=df['comments'].str.contains(str_condition, na=False)
 NID_selected=df[NID_condition]
 if args.verbose is not None:
