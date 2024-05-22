@@ -1,3 +1,6 @@
 NID_*/
 *.xlsx
 *.csv
+source/
+target/
+source_copy/
