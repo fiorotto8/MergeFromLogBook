@@ -3,6 +3,7 @@ import argparse
 from subprocess import run, CalledProcessError, PIPE
 from tqdm import tqdm
 import os
+import glob
 import shutil
 import ROOT
 from array import array
@@ -194,6 +195,51 @@ def add_branch(root_file_path, value,branch_name, tree_name="Events"):
     # Write changes and close the file
     tree.Write("", ROOT.TObject.kOverwrite)  # Overwrite the existing tree
     root_file.Close()
+def create_other_param_tree(root_file_path, env_data, tree_name="OtherParam"):
+    """
+    Create a new TTree named 'OtherParam' in the ROOT file and add environmental data as branches.
+
+    Parameters:
+    - root_file_path: Path to the ROOT file.
+    - env_data: A dictionary containing the environmental data.
+    - tree_name: The name of the new TTree to be created.
+    """
+    # Open the ROOT file in UPDATE mode
+    root_file = ROOT.TFile(root_file_path, "UPDATE")
+    
+    # Create a new TTree
+    new_tree = ROOT.TTree(tree_name, tree_name)
+    
+    # Create arrays to hold the data for the new branches
+    branches = {}
+    for key, value in env_data.items():
+        branches[key] = array('f', [float(value)])
+        new_tree.Branch(key, branches[key], f"{key}/F")
+    
+    # Fill the new tree with the data
+    new_tree.Fill()
+    
+    # Write changes and close the file
+    new_tree.Write("", ROOT.TObject.kOverwrite)
+    root_file.Close()
+def update_root_file_with_new_tree(run_number, env_data, source_folder="source"):
+    """
+    Update the ROOT file with a new TTree containing environmental data.
+
+    Parameters:
+    - source_folder: The folder path to prepend to the ROOT file.
+    - run_number: The run number to identify the ROOT file.
+    - env_data: A dictionary containing the environmental data.
+    """
+    root_file_name = f"reco_run{run_number}_3D.root"
+    root_file_path = os.path.join(source_folder, root_file_name)
+
+    # Check if file exists
+    if os.path.exists(root_file_path):
+        create_other_param_tree(root_file_path, env_data)
+    else:
+        print(f"File not found: {root_file_path}")
+
 
 parser = argparse.ArgumentParser(description='Hadd and in case add env variables to MANGO run from runlog', epilog='Version: 1.0')
 parser.add_argument('-log','--logbook',help='Logbook to read', action='store', type=str,default='MANGO_Data Runs.csv')
@@ -207,7 +253,7 @@ df['HOLE_number'] = df['run_description'].apply(extract_hole)
 
 # Group by HOLE_number and DRIFT_V and get run_number values
 grouped = df.groupby(['HOLE_number', 'DRIFT_V'])['run_number'].apply(list).reset_index()
-
+""" 
 print("Attacching env variables...")
 if args.env:
     # Read the environmental log data
@@ -221,7 +267,23 @@ if args.env:
         for branch in list(env_data.keys()):
             add_branch(f"source/reco_run{row['run_number']}_3D.root", float(env_data[branch]), branch)
             #print(branch)
-
+"""
+print("Attaching env variables...")
+if args.env:
+    # Read the environmental log data
+    env_log_df = pd.read_csv('env_log.csv', delimiter=";")
+    # Find the nearest environmental data for each run and update the ROOT file
+    for index, row in tqdm(df.iterrows()):
+        env_data = find_nearest_env_data(env_log_df, row['start_time'])
+        env_data['DRIFT_V'] = row['DRIFT_V']  # Add the DRIFT_V value to env_data
+        env_data['HOLE_number'] = row['HOLE_number']  # Add the HOLE_number value to env_data
+        # Update ROOT file with the new tree
+        update_root_file_with_new_tree(row['run_number'], env_data)
+        
+print("Removing leftovers from target folder...")
+files = glob.glob('target/*')
+for f in files:
+    os.remove(f)
 
 hadd_strings = generate_hadd_run_string(grouped)
 if args.verbose is True:

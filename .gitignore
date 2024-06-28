@@ -4,3 +4,5 @@ NID_*/
 source/
 target/
 source_copy/
+*.tar
+datasets/
