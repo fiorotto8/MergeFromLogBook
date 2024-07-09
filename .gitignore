@@ -1,8 +1,8 @@
 NID_*/
 *.xlsx
 *.csv
-source/
-target/
+source/*
+target/*
 source_copy/
 *.tar
-datasets/
+datasets/*

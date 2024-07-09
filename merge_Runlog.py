@@ -85,6 +85,40 @@ def find_nearest_env_data(env_df, start_time):
     if 'Timestamp' in nearest_data:
         del nearest_data['Timestamp']
     return nearest_data
+def find_nearest_env_data_MIDAS(env_df, start_time):
+    """
+    Find the row in the env_df with the Timestamp nearest to the provided start_time.
+
+    Parameters:
+    - env_df: DataFrame containing the environmental data.
+    - start_time: Timestamp to find the nearest entry for.
+
+    Returns:
+    - A dictionary containing the environmental data for the nearest Timestamp.
+    """
+    # Convert the Time column to string and clean it
+    env_df['Time'] = env_df['Time'].astype(str).str.strip()
+    
+    # Convert the Time column to datetime format without strict format checking
+    env_df['Time'] = pd.to_datetime(env_df['Time'], errors='coerce')
+    
+    # Drop rows where the Time conversion failed
+    env_df = env_df.dropna(subset=['Time'])
+    
+    # Convert the start_time to datetime
+    start_time = pd.to_datetime(start_time)
+    
+    # Find the row with the nearest timestamp
+    nearest_row = env_df.iloc[(env_df['Time'] - start_time).abs().argsort()[:1]]
+    
+    # Convert the nearest row to a dictionary
+    nearest_data = nearest_row.to_dict(orient='records')[0]
+    
+    # Remove the 'Time' key from the dictionary if it exists
+    if 'Time' in nearest_data:
+        del nearest_data['Time']
+    
+    return nearest_data
 def update_root_file_with_env_data_NOuprrot( run_number, env_data,source_folder="source"):
     """
     Update the ROOT file with environmental data by adding new branches.
@@ -240,9 +274,8 @@ def update_root_file_with_new_tree(run_number, env_data, source_folder="source")
     else:
         print(f"File not found: {root_file_path}")
 
-
 parser = argparse.ArgumentParser(description='Hadd and in case add env variables to MANGO run from runlog', epilog='Version: 1.0')
-parser.add_argument('-log','--logbook',help='Logbook to read', action='store', type=str,default='MANGO_Data Runs.csv')
+parser.add_argument('-log','--logbook',help='Logbook to read', action='store', type=str,default='MANGO_Data_Runs.csv')
 parser.add_argument('-v','--verbose',help='print more info', action='store_true')
 parser.add_argument('-env','--env',help='attach environmental variables from log', action='store_true')
 args = parser.parse_args()
@@ -253,21 +286,7 @@ df['HOLE_number'] = df['run_description'].apply(extract_hole)
 
 # Group by HOLE_number and DRIFT_V and get run_number values
 grouped = df.groupby(['HOLE_number', 'DRIFT_V'])['run_number'].apply(list).reset_index()
-""" 
-print("Attacching env variables...")
-if args.env:
-    # Read the environmental log data
-    env_log_df = pd.read_csv('env_log.csv',delimiter=";")
-    # Find the nearest environmental data for each run and update the ROOT file
-    for index, row in tqdm(df.iterrows()):
-        env_data = find_nearest_env_data(env_log_df, row['start_time'])
-        env_data['DRIFT_V'] = row['DRIFT_V']  # Add the DRIFT_V value to env_data
-        env_data['HOLE_number'] = row['HOLE_number']  # Add the DRIFT_V value to env_data
-        #print(row["run_number"],env_data)
-        for branch in list(env_data.keys()):
-            add_branch(f"source/reco_run{row['run_number']}_3D.root", float(env_data[branch]), branch)
-            #print(branch)
-"""
+
 print("Attaching env variables...")
 if args.env:
     # Read the environmental log data
@@ -279,7 +298,17 @@ if args.env:
         env_data['HOLE_number'] = row['HOLE_number']  # Add the HOLE_number value to env_data
         # Update ROOT file with the new tree
         update_root_file_with_new_tree(row['run_number'], env_data)
-        
+else:
+    # Read the CSV file, skipping the first 7 rows and using the 8th row as column names
+    env_log_df = pd.read_csv("history_output.csv", skiprows=7, delim_whitespace=True)
+    # Find the nearest environmental data for each run and update the ROOT file
+    for index, row in tqdm(df.iterrows()):
+        env_data = find_nearest_env_data_MIDAS(env_log_df, row['start_time'])
+        env_data['DRIFT_V'] = row['DRIFT_V']  # Add the DRIFT_V value to env_data
+        env_data['HOLE_number'] = row['HOLE_number']  # Add the HOLE_number value to env_data
+        # Update ROOT file with the new tree
+        update_root_file_with_new_tree(row['run_number'], env_data)
+
 print("Removing leftovers from target folder...")
 files = glob.glob('target/*')
 for f in files:
