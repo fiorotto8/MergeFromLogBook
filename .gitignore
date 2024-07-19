@@ -6,3 +6,4 @@ target/*
 source_copy/
 *.tar
 datasets/*
+output_files/

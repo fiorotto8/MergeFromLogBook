@@ -78,8 +78,8 @@ def find_nearest_env_data(env_df, start_time):
     Returns:
     - A dictionary containing the environmental data for the nearest Timestamp.
     """
-    env_df['Timestamp'] = pd.to_datetime(env_df['Timestamp'], format="%d/%m/%Y_%H-%M-%S")
-    start_time = pd.to_datetime(start_time)
+    env_df['Timestamp'] = pd.to_datetime(env_df['Timestamp'], format="%d/%m/%Y_%H-%M-%S",dayfirst=True)
+    start_time = pd.to_datetime(start_time,dayfirst=True)
     nearest_row = env_df.iloc[(env_df['Timestamp'] - start_time).abs().argsort()[:1]]
     nearest_data = nearest_row.to_dict(orient='records')[0]
     if 'Timestamp' in nearest_data:
@@ -100,13 +100,13 @@ def find_nearest_env_data_MIDAS(env_df, start_time):
     env_df['Time'] = env_df['Time'].astype(str).str.strip()
     
     # Convert the Time column to datetime format without strict format checking
-    env_df['Time'] = pd.to_datetime(env_df['Time'], errors='coerce')
+    env_df['Time'] = pd.to_datetime(env_df['Time'], errors='coerce',dayfirst=True)
     
     # Drop rows where the Time conversion failed
     env_df = env_df.dropna(subset=['Time'])
     
     # Convert the start_time to datetime
-    start_time = pd.to_datetime(start_time)
+    start_time = pd.to_datetime(start_time,dayfirst=True)
     
     # Find the row with the nearest timestamp
     nearest_row = env_df.iloc[(env_df['Time'] - start_time).abs().argsort()[:1]]
@@ -140,25 +140,25 @@ def update_root_file_with_env_data_NOuprrot( run_number, env_data,source_folder=
     tree = file.Get(tree_name)
 
     # Create arrays to hold the data for the new branches
-    keg_t = array('f', [env_data['KEG_t']])
-    keg_p = array('f', [env_data['KEG_p']])
-    keg_h = array('f', [env_data['KEG_h']])
+    keg_t = array('f', [env_data['KEG_temp']])
+    keg_p = array('f', [env_data['KEG_pressure']])
+    keg_h = array('f', [env_data['KEG_humidity']])
     keg_voc = array('f', [env_data['KEG_voc']])
     source_pos = array('f', [env_data['Source_pos']])
-    mangolino_t = array('f', [env_data['MANGOlino_t']])
-    mangolino_p = array('f', [env_data['MANGOlino_p']])
-    mangolino_h = array('f', [env_data['MANGOlino_h']])
+    mangolino_t = array('f', [env_data['MANGOlino_temp']])
+    mangolino_p = array('f', [env_data['MANGOlino_pressure']])
+    mangolino_h = array('f', [env_data['MANGOlino_humidity']])
     mangolino_voc = array('f', [env_data['MANGOlino_voc']])
 
     # Create new branches in the tree
-    tree.Branch("KEG_t", keg_t, "KEG_t/F")
-    tree.Branch("KEG_p", keg_p, "KEG_p/F")
-    tree.Branch("KEG_h", keg_h, "KEG_h/F")
+    tree.Branch("KEG_temp", keg_t, "KEG_temp/F")
+    tree.Branch("KEG_pressure", keg_p, "KEG_pressure/F")
+    tree.Branch("KEG_humidity", keg_h, "KEG_humidity/F")
     tree.Branch("KEG_voc", keg_voc, "KEG_voc/F")
     tree.Branch("Source_pos", source_pos, "Source_pos/F")
-    tree.Branch("MANGOlino_t", mangolino_t, "MANGOlino_t/F")
-    tree.Branch("MANGOlino_p", mangolino_p, "MANGOlino_p/F")
-    tree.Branch("MANGOlino_h", mangolino_h, "MANGOlino_h/F")
+    tree.Branch("MANGOlino_temp", mangolino_t, "MANGOlino_temp/F")
+    tree.Branch("MANGOlino_pressure", mangolino_p, "MANGOlino_pressure/F")
+    tree.Branch("MANGOlino_humidity", mangolino_h, "MANGOlino_humidity/F")
     tree.Branch("MANGOlino_voc", mangolino_voc, "MANGOlino_voc/F")
 
     # Fill the new branches
@@ -282,7 +282,7 @@ args = parser.parse_args()
 
 df=pd.read_csv(args.logbook)
 # Apply the function to create a new column for HOLE number
-df['HOLE_number'] = df['run_description'].apply(extract_hole)
+df['HOLE_number'] = df['source_position']
 
 # Group by HOLE_number and DRIFT_V and get run_number values
 grouped = df.groupby(['HOLE_number', 'DRIFT_V'])['run_number'].apply(list).reset_index()
@@ -295,7 +295,8 @@ if args.env:
     for index, row in tqdm(df.iterrows()):
         env_data = find_nearest_env_data(env_log_df, row['start_time'])
         env_data['DRIFT_V'] = row['DRIFT_V']  # Add the DRIFT_V value to env_data
-        env_data['HOLE_number'] = row['HOLE_number']  # Add the HOLE_number value to env_data
+        env_data['HOLE_number'] = row['source_position']  # Add the HOLE_number value to env_data
+        #print(env_data)
         # Update ROOT file with the new tree
         update_root_file_with_new_tree(row['run_number'], env_data)
 else:
@@ -305,7 +306,7 @@ else:
     for index, row in tqdm(df.iterrows()):
         env_data = find_nearest_env_data_MIDAS(env_log_df, row['start_time'])
         env_data['DRIFT_V'] = row['DRIFT_V']  # Add the DRIFT_V value to env_data
-        env_data['HOLE_number'] = row['HOLE_number']  # Add the HOLE_number value to env_data
+        env_data['HOLE_number'] = row['source_position']  # Add the HOLE_number value to env_data
         # Update ROOT file with the new tree
         update_root_file_with_new_tree(row['run_number'], env_data)
 
