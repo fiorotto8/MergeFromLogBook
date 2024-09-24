@@ -14,7 +14,7 @@ Read the **Runlog** and the **MIDAS history** to merge the run with the same des
 
 - create directories: "source", "target" and "datasets"
 - Download reconstructed files to the dataset (tar is better) and uncompressed it to the source folder **DO not remove backup until you have finished**
-- Download the Runlog from GRAFANA: <https://grafana.cygno.cloud.infn.it/d/d195dd13-0d21-4ccb-9805-cdcec06a61ff/run-information?orgId=1&refresh=5s>, Instpect -> Data -> Download CSV
+- Download the Runlog from GRAFANA: <https://grafana.cygno.cloud.infn.it/d/d195dd13-0d21-4ccb-9805-cdcec06a61ff/run-information?orgId=1&refresh=5s>, Inspect -> Data -> Download CSV
 - Remove the non interesting runs lines
 - Identify the start and stop time of your scan
 - On the DAQ machine (with the LNGS VPN on) `ssh cygno01@172.17.19.155` run: `mhist -e MANGOSensors -s YYMMDD[.HHMM[SS]] -p YYMMDD[.HHMM[SS]] > ~/history_output.csv` where -s indicated the start date and -p the end date

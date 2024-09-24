@@ -96,18 +96,18 @@ def find_nearest_env_data_MIDAS(env_df, start_time):
     Returns:
     - A dictionary containing the environmental data for the nearest Timestamp.
     """
+    #print(env_df['Time'])
+
     # Convert the Time column to string and clean it
     env_df['Time'] = env_df['Time'].astype(str).str.strip()
-    
+
     # Convert the Time column to datetime format without strict format checking
-    env_df['Time'] = pd.to_datetime(env_df['Time'], errors='coerce',dayfirst=True)
-    
-    # Drop rows where the Time conversion failed
-    env_df = env_df.dropna(subset=['Time'])
-    
+    env_df['Time'] = pd.to_datetime(env_df['Time'])
+
+
     # Convert the start_time to datetime
-    start_time = pd.to_datetime(start_time,dayfirst=True)
-    
+    start_time = pd.to_datetime(start_time,dayfirst=True, format="%Y-%m-%d %H:%M:%S")
+    #print(start_time)
     # Find the row with the nearest timestamp
     nearest_row = env_df.iloc[(env_df['Time'] - start_time).abs().argsort()[:1]]
     
@@ -281,6 +281,7 @@ parser.add_argument('-env','--env',help='attach environmental variables from log
 args = parser.parse_args()
 
 df=pd.read_csv(args.logbook)
+df["run_number"] = df["run_number"].astype(int)
 # Apply the function to create a new column for HOLE number
 df['HOLE_number'] = df['source_position']
 
@@ -300,11 +301,17 @@ if args.env:
         # Update ROOT file with the new tree
         update_root_file_with_new_tree(row['run_number'], env_data)
 else:
-    # Read the CSV file, skipping the first 7 rows and using the 8th row as column names
-    env_log_df = pd.read_csv("history_output.csv", skiprows=7, delim_whitespace=True)
+    # Read the CSV file, skipping the first 7 rows, and do not infer headers automatically
+    env_log_df = pd.read_csv("history_output.csv", skiprows=8, sep=r'\t+', header=None, dtype=str, engine='python')
+
+    # Manually set the column names
+    env_log_df.columns = ['Time', 'KEG_temp', 'KEG_pressure', 'KEG_humidity', 'MANGOlino_temp', 'MANGOlino_pressure', 'MANGOlino_humidity']
+
     # Find the nearest environmental data for each run and update the ROOT file
-    for index, row in tqdm(df.iterrows()):
+    for index, row in df.iterrows():
         env_data = find_nearest_env_data_MIDAS(env_log_df, row['start_time'])
+        #print(env_data,df['start_time'])
+        #print(row["DRIFT_V"],row["source_position"])
         env_data['DRIFT_V'] = row['DRIFT_V']  # Add the DRIFT_V value to env_data
         env_data['HOLE_number'] = row['source_position']  # Add the HOLE_number value to env_data
         # Update ROOT file with the new tree
